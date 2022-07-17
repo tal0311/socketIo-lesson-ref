@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      body {
+        margin: 0;
+        padding-bottom: 3rem;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+          Helvetica, Arial, sans-serif;
+      }
+
+      #form {
+        background: rgba(0, 0, 0, 0.15);
+        padding: 0.25rem;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        height: 3rem;
+        box-sizing: border-box;
+        backdrop-filter: blur(10px);
+      }
+      #input {
+        border: none;
+        padding: 0 1rem;
+        flex-grow: 1;
+        border-radius: 2rem;
+        margin: 0.25rem;
+      }
+      #input:focus {
+        outline: none;
+      }
+      #form > button {
+        background: #333;
+        border: none;
+        padding: 0 1rem;
+        margin: 0.25rem;
+        border-radius: 3px;
+        outline: none;
+        color: #fff;
+      }
+
+      #messages {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+      }
+      #messages > li {
+        padding: 0.5rem 1rem;
+      }
+      #messages > li:nth-child(odd) {
+        background: #efefef;
+      }
+      .user-msg {
+        position: fixed;
+        right: 0;
+      }
+    </style>
+  </head>
+
+  <body onload="init()">
+    <label for="topic">
+      politics
+      <input
+        type="radio"
+        name="topic"
+        value="politics"
+        oninput="setTopic('politics')"
+      />
+    </label>
+    <label for="tpoic">
+      love
+      <input
+        type="radio"
+        name="topic"
+        value="love"
+        oninput="setTopic('love')"
+        checked
+      />
+    </label>
+    <h4 class="user-msg"></h4>
+    <h1 class="user-name"></h1>
+    <ul id="messages"></ul>
+    <form id="form" action="">
+      <input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+
+    <script>
+      var socket
+      var nickname
+
+      function init() {
+        socket = io()
+        nickname = localStorage.nickname || prompt('Add nickname')
+        localStorage.nickname = nickname
+        setUserName()
+        addListeners()
+        setup()
+      }
+
+      function setup() {
+        socket.on('connect', () => {
+          socket.emit('setUser', nickname)
+          // socket.emit('set-topic', 'love')
+        })
+        socket.on('add-msgs', (msgs) => {
+          console.log(msgs)
+          msgs.forEach(addMsg)
+        })
+        socket.on('chat-message', (msg) => {
+          addMsg(msg)
+          console.log(msg)
+        })
+
+        socket.on('new-connection', (msg) => {
+          // console.log(msg)
+          setUserMsg(msg)
+          setTimeout(setUserMsg, 2000, '')
+        })
+        socket.on('typing', (msg) => {
+          console.log(msg)
+        })
+      }
+
+      function addListeners() {
+        var form = document.getElementById('form')
+        var input = document.getElementById('input')
+
+        form.addEventListener('submit', function (e) {
+          e.preventDefault()
+          if (input.value) {
+            const msg = {
+              by: nickname,
+              value: input.value,
+              to: 'edgi',
+            }
+            socket.emit('chat-message', msg)
+            input.value = ''
+          }
+        })
+
+        input.addEventListener('input', ({ target }) => {
+          if (target.value.length > 1) return
+          if (target.value.length > 0) {
+            socket.emit('typing')
+          }
+        })
+      }
+
+      function setTopic(topic) {
+        console.log(topic)
+        socket.emit('set-topic', topic)
+      }
+      function setUserName() {
+        const elUserName = document.querySelector('.user-name')
+        elUserName.innerText = nickname
+      }
+      function setUserMsg(msg) {
+        const elUserMsg = document.querySelector('.user-msg')
+        elUserMsg.innerText = msg
+      }
+      function addMsg(msg) {
+        const elMsgs = document.querySelector('#messages')
+        elMsgs.innerHTML += `<li>
+            ${msg.by}: ${msg.value}
+          </li>`
+        // var item = document.createElement('li')
+        // item.textContent = `${msg.by}: ${msg.value}`
+        // messages.appendChild(item)
+        window.scrollTo(0, document.body.scrollHeight)
+      }
+    </script>
+  </body>
+</html>
